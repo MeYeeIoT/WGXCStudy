@@ -19,6 +19,8 @@ site = "milesplit"
 meetName = "/6231/perry-outdoor-family-center-xc-course"
 dirName = "madison"
 mileSplitName = "u-wanna-come-back"
+startYear = 2021
+endYear = 2023
 
 def findMeets():
 	teams = []
@@ -29,55 +31,9 @@ def findMeets():
 			teams.append((tag.find("a")).get("href"))
 	return teams
 
-if not os.path.exists(dirName):
-		os.mkdir(dirName)
-
-startYear = 2021
-endYear = 2023
 def main():
-	for year in range(startYear, endYear):
-		year = str(year)
-
-		if not os.path.exists(dirName+"/"+year): #Making Directory for the Year
-			os.mkdir(dirName+"/"+year)
-
-		venueRequest = Request("https://oh.milesplit.com/venues"+meetName) #Opens the Meet Location Page
-		venuePage = urlopen(venueRequest)
-		venueSoup = BeautifulSoup(venuePage, "lxml")
-
-		subVenueLink = ""
-		print("https://oh.milesplit.com/venues/"+meetName)
-		for link in venueSoup.findAll("a"): #Searches for the a tag
-			currentLink = link.get('href') #Gets the link from the tag
-			#print(currentLink)
-			if currentLink.__contains__(mileSplitName) and currentLink.__contains__(year):
-				subVenueLink = currentLink + "/results" #If the link is what we're looking for, add /results to get to the desired site
-				#print(subVenueLink)
-
-
-		print("\n\n\n|||OPENING: "+subVenueLink+"|||\n\n\n")
-
-		raceRequest = Request(subVenueLink)
-		racePage = urlopen(raceRequest)
-		raceSoup = BeautifulSoup(racePage, "lxml")
-
-		testFileContents = requests.get(subVenueLink)
-		open("test.txt", "wb").write(testFileContents.content)
-
-		for link in raceSoup.findAll("a"):
-			currentLink = link.get("href")
-			try:
-				linkText = link.contents[0] #Incase the link is on an image or something
-			except:
-				continue
-			if linkAccepted(linkText):
-				raceLink = currentLink + "/raw" #Goes to the desired page
-				print("Approved: "+raceLink)
-
-		raceResultsReq = Request(raceLink)
-		resultsPage = urlopen(raceResultsReq)
-		raceResultsSoup = BeautifulSoup(resultsPage, "lxml")
-		results = raceResultsSoup.find_all('pre')
-		open("./"+dirName+"/"+year+"/results.txt", "w").write(str(results))
+	if not os.path.exists(dirName):
+		os.mkdir(dirName)
+	findMeets()
 if __name__=="__main__":
 	main()

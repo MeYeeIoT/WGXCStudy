@@ -4,17 +4,18 @@ import re
 import requests
 import os
 from time import sleep
+class ListTooLong(Exception):
+	pass
 def linkAccepted(link):
     if(link.__contains__("Valley")) or (link.__contains__("Open")) or (link.__contains__("2500")) or (link.__contains__("2.15")):
         return False
-    if(link.__contains__("Boys") or link.__contains__("BOYS") or link.__contains__("boys") and not(link.__contains__("Valley"))):
+    if(link.__contains__("Boys") or link.__contains__("BOYS") or link.__contains__("boys")):
         if(link.__contains__("II") or link.__contains__("Gold")) or link.__contains__("2"):
             return True
-        elif(link.__contains__("Varsity") and not(link.__contains__("Junior")) and not(link.__contains__("I")) and not(link.__contains__("1")) and not(link.__contains__("MS"))):
+        elif(link.__contains__("Varsity") and not(link.__contains__("Junior")) and not(link.__contains__("I")) and not(link.__contains__("1")) and not(link.__contains__("MS")) and not link.__contains__("Red")):
             return True
         elif(link.__contains__("High School Boys") and not(link.__contains__("1"))):
             return True
-        
         else:
             return False
     elif(link.__contains__("Division 2 Results") or link.__contains__("Varsity D2/3 Results") or link.__contains__("Blue") and not(link.__contains__("1")) and not(link.__contains__("3")) and not(link.__contains__("Boys")) and not(link.__contains__("Girls")) and not(link.__contains__("MS"))):
@@ -57,6 +58,7 @@ def getMeetResults(meetData, year):
 	resultSoup = BeautifulSoup(resultPage, "lxml")
 	raceLink = None
 	results = None
+	date = None
 	for link in resultSoup.findAll("a"):
 		currentLink = link.get("href")
 		try:
@@ -74,8 +76,23 @@ def getMeetResults(meetData, year):
 		resultsRequest = Request(raceLink)
 		resultsPage = urlopen(resultsRequest)
 		resultSoup = BeautifulSoup(resultsPage, "lxml")
-		results = str(resultSoup.find_all('pre'))
-	return results
+		date = resultSoup.find("time").text.strip()
+		location = resultSoup.find("div", "venueCity").text.strip()
+		results = str(resultSoup.find("div", id="meetResultsBody"))
+	times = []
+	lines = results.split("\n")
+	try:
+		for line in lines:
+			if (line.__contains__("West Geauga")):
+				for item in line.split():
+					if (item.__contains__(":") and int(item.split(":")[0])>12 and int(item.split(":")[0])<45):
+						if (len(times)>=7):
+							raise ListTooLong
+						else:
+							times.append(item)
+	except ListTooLong:
+		pass
+	return {meetData[0]:[times, date, location]}
 def main():
 	startYear = 2021
 	endYear = 2022
@@ -83,10 +100,13 @@ def main():
 	teams = getTeams()
 	#for team in teams:
 	team = 9454
-	for year in range(startYear, endYear):
-		meets = getMeets(team, year)
-		for meet in meets:
-			results.append(getMeetResults(meet, year))
-	print(results)
+	year = 2021
+	#for year in range(startYear, endYear):
+	meets = getMeets(team, year)
+	yearResults = []
+	for meet in meets:
+		results = getMeetResults(meet, year)
+		yearResults.append(results)
+	print(yearResults)
 if __name__=="__main__":
 	main()

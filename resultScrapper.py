@@ -77,6 +77,7 @@ def getMeetResults(meetData, year):
 		resultsPage = urlopen(resultsRequest)
 		resultSoup = BeautifulSoup(resultsPage, "lxml")
 		date = resultSoup.find("time").text.strip()
+		location = resultSoup.find("div", "venueCity").text.strip()
 		results = str(resultSoup.find("div", id="meetResultsBody"))
 	times = []
 	lines = results.split("\n")
@@ -91,7 +92,7 @@ def getMeetResults(meetData, year):
 							times.append(item)
 	except ListTooLong:
 		pass
-	return {meetData[0]:[times, date]}
+	return {meetData[0]:[times, date, location]}
 def main():
 	startYear = 2021
 	endYear = 2022

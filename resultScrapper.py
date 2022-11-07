@@ -126,7 +126,6 @@ def getMeetResults(meetData, year):
 		pass
 	return [meetData[0], times, date, location]
 def main():
-	#data = getWeatherData("Madison, OH", "2022-09-03", "09:00:00")
 	startYear = 2021
 	endYear = 2022
 	results = []

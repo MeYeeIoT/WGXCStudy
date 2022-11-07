@@ -4,6 +4,7 @@ import re
 import requests
 import os
 from time import sleep
+from datetime import datetime
 class ListTooLong(Exception):
 	pass
 def linkAccepted(link):
@@ -24,6 +25,22 @@ def linkAccepted(link):
         return True
     elif(link.__contains__("\"Completed\" Results")):
         return True
+def getWeatherData(location, date, time):
+	weatherData = []
+	city = location.split(",")[0]
+	state = location.split(",")[1].strip()
+	response = requests.get("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"+city+"%2C%20"+state+"/"+date+"/"+date+"?unitGroup=metric&include=hours&key=U36K99V5F9CQN7A6LPRAT3SYP&contentType=json")
+	data = response.json()
+	for item in data["days"][0]["hours"]:
+		if (item["datetime"]==time):
+			weatherData.append(item["temp"])
+			weatherData.append(item["humidity"])
+			weatherData.append(item["dew"])
+			weatherData.append(item["precip"])
+			weatherData.append(item["windgust"])
+			weatherData.append(item["windspeed"])
+			weatherData.append(item["cloudcover"])
+	return weatherData
 def getTeams():
 	teams = []
 	request = Request("https://oh.milesplit.com/meets/501164-ohsaa-division-2-district-madison-2022/teams")
@@ -77,6 +94,7 @@ def getMeetResults(meetData, year):
 		resultsPage = urlopen(resultsRequest)
 		resultSoup = BeautifulSoup(resultsPage, "lxml")
 		date = resultSoup.find("time").text.strip()
+		date = datetime.strptime(date, "%b %d, %Y").isoformat()[:10]
 		location = resultSoup.find("div", "venueCity").text.strip()
 		results = str(resultSoup.find("div", id="meetResultsBody"))
 	times = []
@@ -94,6 +112,7 @@ def getMeetResults(meetData, year):
 		pass
 	return {meetData[0]:[times, date, location]}
 def main():
+	#data = getWeatherData("Madison, OH", "2022-09-03", "09:00:00")
 	startYear = 2021
 	endYear = 2022
 	results = []

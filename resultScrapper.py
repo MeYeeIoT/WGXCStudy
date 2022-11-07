@@ -7,6 +7,21 @@ from time import sleep
 from datetime import datetime
 class ListTooLong(Exception):
 	pass
+def averageTimeCalculator(times):
+	timeList = []
+	for t in times:
+		timeSplit = t.split(":")
+		minutes = int(timeSplit[0])*60
+		seconds = int(timeSplit[1])
+		time = minutes+seconds
+		timesList.append(time)
+	averageTime = sum(timeList)/len(timeList)
+	averageTimeMinutes = math.floor(averageTime/60)
+	averageTimeSeconds = round(averageTime%60, 4)
+	if (averageTimeSeconds<10):
+		return str(averageTimeMinutes)+":0"+str(averageTimeSeconds)
+	else:
+		return str(averageTimeMinutes)+":"+str(averageTimeSeconds)
 def linkAccepted(link):
     if(link.__contains__("Valley")) or (link.__contains__("Open")) or (link.__contains__("2500")) or (link.__contains__("2.15")):
         return False
@@ -37,7 +52,6 @@ def getWeatherData(location, date, time):
 			weatherData.append(item["humidity"])
 			weatherData.append(item["dew"])
 			weatherData.append(item["precip"])
-			weatherData.append(item["windgust"])
 			weatherData.append(item["windspeed"])
 			weatherData.append(item["cloudcover"])
 	return weatherData
@@ -110,7 +124,7 @@ def getMeetResults(meetData, year):
 							times.append(item)
 	except ListTooLong:
 		pass
-	return {meetData[0]:[times, date, location]}
+	return [meetData[0], times, date, location]
 def main():
 	#data = getWeatherData("Madison, OH", "2022-09-03", "09:00:00")
 	startYear = 2021
@@ -125,7 +139,9 @@ def main():
 	yearResults = []
 	for meet in meets:
 		results = getMeetResults(meet, year)
+		results.append(getWeatherData(results[-1], results[-2], "09:00:00"))
 		yearResults.append(results)
-	print(yearResults)
+	for item in yearResults:
+		print(item)
 if __name__=="__main__":
 	main()

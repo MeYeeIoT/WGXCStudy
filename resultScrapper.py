@@ -5,6 +5,7 @@ import requests
 import os
 from time import sleep
 from datetime import datetime
+#import mysql.connector
 class ListTooLong(Exception):
 	pass
 def averageTimeCalculator(times):
@@ -62,15 +63,17 @@ def getTeams():
 	soup = BeautifulSoup(page, "lxml")
 	for tag in soup.find_all("td", "name"):
 			urlString = str(tag.find("a").get("href"))
+			teamName = str(tag.find("a").text.strip())
+			print(teamName)
 			teamNumber = [int(x) for x in urlString if x.isdigit()]
 			cNum = ""
 			for n in teamNumber:
 				cNum+=str(n)
-			teams.append(int(cNum))
+			teams.append([int(cNum), teamName])
 	return teams
 def getMeets(team, year):
 	meetsData = []
-	response = requests.get("https://oh.milesplit.com/api/v1/teams/"+str(team)+"/schedules?season=cc&year="+str(year))
+	response = requests.get("https://oh.milesplit.com/api/v1/teams/"+str(team[0])+"/schedules?season=cc&year="+str(year))
 	meetData = response.json()
 	for x in meetData["data"]:
 		for y in range(len(meetData["data"][x])):
@@ -79,7 +82,7 @@ def getMeets(team, year):
 				meetLink = meetData["data"][x][y]["items"][d]["link"]
 				meetsData.append([name, meetLink])
 	return meetsData
-def getMeetResults(meetData, year):
+def getMeetResults(meetData, year, team):
 	name = (meetData[0]).lower()
 	name = name.replace(" - ", " ")
 	name = name.replace(" ", "-")
@@ -115,7 +118,7 @@ def getMeetResults(meetData, year):
 	lines = results.split("\n")
 	try:
 		for line in lines:
-			if (line.__contains__("West Geauga")):
+			if (line.__contains__(team[1])):
 				for item in line.split():
 					if (item.__contains__(":") and int(item.split(":")[0])>12 and int(item.split(":")[0])<45):
 						if (len(times)>=7):
@@ -124,20 +127,45 @@ def getMeetResults(meetData, year):
 							times.append(item)
 	except ListTooLong:
 		pass
-	return [meetData[0], times, date, location]
+	return [meetData[0], times, date, location, team[1]]
+def enterMeetData(meetData, c):
+	c.execute("INSERT INTO MeetData VALUES ("+meetData[0]+", "+meetData[2]+", "+meetData[4][0]+", "+meetData[4][1]+", "+meetData[4][2]+", "+meetData[4][3]+", "+meetData[4][4]+", "+meetData[4][5]+")")
+	c.commit()
+def enterTeamData(meetData, c):
+	c.execute("INSERT INTO TeamData VALUES ("+meetData[5]+", "+meetData[2]+", "+meetData[1][0]+", "+meetData[1][1]+", "+meetData[1][2]+", "+meetData[1][3]+", "+meetData[1][4]+", "+meetData[1][5]+", "+meetData[1][6]+")")
+	c.commit()
 def main():
+	mydb = mysql.connector.connect(
+		host="localhost",
+		username="program",
+		password="crossCountry2048"
+	)
+	cursor = mydb.cursor()
+	cursor.execute("SHOW tables")
+	result = cursor.fetchall()
+	meetTableExists = False
+	teamTableExists = False
+	for r in result:
+		if (r=="MeetData"):
+			meetTableExists = True
+		elif (r=="TeamData"):
+			teamTableExists = True
+	if (not meetTableExists):
+		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, cloudcover FLOAT)")
+	if (not teamTableExists):
+		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, raceDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME)")
 	startYear = 2021
 	endYear = 2022
 	results = []
 	teams = getTeams()
 	#for team in teams:
-	team = 9454
+	team = [9454, "West Geauga"]
 	year = 2021
 	#for year in range(startYear, endYear):
 	meets = getMeets(team, year)
 	yearResults = []
 	for meet in meets:
-		results = getMeetResults(meet, year)
+		results = getMeetResults(meet, year, team)
 		results.append(getWeatherData(results[-1], results[-2], "09:00:00"))
 		yearResults.append(results)
 	for item in yearResults:

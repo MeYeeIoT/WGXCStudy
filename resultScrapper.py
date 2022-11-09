@@ -5,7 +5,7 @@ import requests
 import os
 from time import sleep
 from datetime import datetime
-#import mysql.connector
+import mariadb
 class ListTooLong(Exception):
 	pass
 def averageTimeCalculator(times):
@@ -54,6 +54,7 @@ def getWeatherData(location, date, time):
 			weatherData.append(item["dew"])
 			weatherData.append(item["precip"])
 			weatherData.append(item["windspeed"])
+			weatherData.append(item["windgust"])
 			weatherData.append(item["cloudcover"])
 	return weatherData
 def getTeams():
@@ -64,7 +65,6 @@ def getTeams():
 	for tag in soup.find_all("td", "name"):
 			urlString = str(tag.find("a").get("href"))
 			teamName = str(tag.find("a").text.strip())
-			print(teamName)
 			teamNumber = [int(x) for x in urlString if x.isdigit()]
 			cNum = ""
 			for n in teamNumber:
@@ -127,33 +127,59 @@ def getMeetResults(meetData, year, team):
 							times.append(item)
 	except ListTooLong:
 		pass
+	while (len(times)<7):
+		times.append("NULL")
 	return [meetData[0], times, date, location, team[1]]
-def enterMeetData(meetData, c):
-	c.execute("INSERT INTO MeetData VALUES ("+meetData[0]+", "+meetData[2]+", "+meetData[4][0]+", "+meetData[4][1]+", "+meetData[4][2]+", "+meetData[4][3]+", "+meetData[4][4]+", "+meetData[4][5]+")")
-	c.commit()
-def enterTeamData(meetData, c):
-	c.execute("INSERT INTO TeamData VALUES ("+meetData[5]+", "+meetData[2]+", "+meetData[1][0]+", "+meetData[1][1]+", "+meetData[1][2]+", "+meetData[1][3]+", "+meetData[1][4]+", "+meetData[1][5]+", "+meetData[1][6]+")")
-	c.commit()
+def enterMeetData(meetData, c, mydb):
+	strCommand = "INSERT INTO MeetData VALUES ('"+meetData[0]+"', '"+meetData[2]+"'"
+	nullMark = False
+	for data in meetData[5]:
+		if (data is None):
+			strCommand+=", NULL"
+		else:
+			strCommand+=", "+str(data)
+	strCommand+=")"
+	#strCommand = "INSERT INTO MeetData VALUES ('"+meetData[0]+"', '"+meetData[2]+"', "+str(meetData[5][0])+", "+str(meetData[5][1])+", "+str(meetData[5][2])+", "+str(meetData[5][3])+", "+str(meetData[5][4])+", "+str(meetData[5][5])+")"
+	c.execute(strCommand)
+	mydb.commit()
+def enterTeamData(meetData, c, mydb):
+	strCommand = "INSERT INTO TeamData VALUES ('"+meetData[4]+"', '"+meetData[2]
+	nullMark = False
+	for time in meetData[1]:
+		if (time=="NULL" and not nullMark):
+			strCommand+=("', "+time)
+			nullMark = True
+		elif (time=="NULL" and nullMark):
+			strCommand+=(", "+time)
+			nullMark = True
+		elif (nullMark):
+			strCommand+=(", '"+time)
+			nullMark = False
+		else:
+			strCommand+=("', '"+time)
+			nullMark = False
+	if (nullMark):
+		strCommand+=")"
+	else:
+		strCommand+="')"
+	c.execute(strCommand)
+	mydb.commit()
 def main():
-	mydb = mysql.connector.connect(
-		host="localhost",
-		username="program",
-		password="crossCountry2048"
-	)
+	mydb = mariadb.connect(host="localhost", username="stats", password="crossCountry2048", database="statsProject")
 	cursor = mydb.cursor()
 	cursor.execute("SHOW tables")
 	result = cursor.fetchall()
 	meetTableExists = False
 	teamTableExists = False
 	for r in result:
-		if (r=="MeetData"):
+		if (r[0]=="MeetData"):
 			meetTableExists = True
-		elif (r=="TeamData"):
+		elif (r[0]=="TeamData"):
 			teamTableExists = True
 	if (not meetTableExists):
-		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, cloudcover FLOAT)")
+		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, windgust FLOAT, cloudcover FLOAT)")
 	if (not teamTableExists):
-		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, raceDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME)")
+		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME)")
 	startYear = 2021
 	endYear = 2022
 	results = []
@@ -165,10 +191,14 @@ def main():
 	meets = getMeets(team, year)
 	yearResults = []
 	for meet in meets:
+		print(meet[0])
 		results = getMeetResults(meet, year, team)
-		results.append(getWeatherData(results[-1], results[-2], "09:00:00"))
+		results.append(getWeatherData(results[3], results[2], "09:00:00"))
 		yearResults.append(results)
+		enterMeetData(results, cursor, mydb)
+		enterTeamData(results, cursor, mydb)
 	for item in yearResults:
 		print(item)
+	mydb.close()
 if __name__=="__main__":
 	main()

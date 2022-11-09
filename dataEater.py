@@ -180,25 +180,27 @@ def main():
 		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, windgust FLOAT, cloudcover FLOAT)")
 	if (not teamTableExists):
 		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME)")
-	startYear = 2021
+	startYear = 2012
 	endYear = 2022
 	results = []
 	teams = getTeams()
-	#for team in teams:
-	team = [9454, "West Geauga"]
-	year = 2021
-	#for year in range(startYear, endYear):
-	meets = getMeets(team, year)
-	yearResults = []
-	for meet in meets:
-		print(meet[0])
-		results = getMeetResults(meet, year, team)
-		results.append(getWeatherData(results[3], results[2], "09:00:00"))
-		yearResults.append(results)
-		enterMeetData(results, cursor, mydb)
-		enterTeamData(results, cursor, mydb)
-	for item in yearResults:
-		print(item)
+	for year in range(startYear, endYear):
+		print(year)
+		for team in teams:
+			print(team[1])
+			#team = [9454, "West Geauga"]
+			#year = 2021
+			meets = getMeets(team, year)
+			yearResults = []
+			for meet in meets:
+				print(meet[0])
+				results = getMeetResults(meet, year, team)
+				results.append(getWeatherData(results[3], results[2], "09:00:00"))
+				#yearResults.append(results)
+				enterMeetData(results, cursor, mydb)
+				enterTeamData(results, cursor, mydb)
+	#for item in yearResults:
+	#	print(item)
 	mydb.close()
 if __name__=="__main__":
 	main()

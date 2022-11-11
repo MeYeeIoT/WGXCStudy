@@ -6,8 +6,12 @@ import os
 from time import sleep
 from datetime import datetime
 import mariadb
+valleyDivision = ["Grand Valley", "Crestwood", "Independence", "Wickliffe", "Cardinal", "Kirtland", "Berkshire", "Trinity", "Richmond"]
+chagrinDivision = ["West Geauga", "Hawken", "Orange", "Edgewood", "Chagrin Falls", "Geneva", "Beachwood", "Perry", "Lakeside", "Harvey"]
 class ListTooLong(Exception):
 	pass
+def hasNumber(string):
+	return any(char.isdigit() for char in string)
 def averageTimeCalculator(times):
 	timeList = []
 	for t in times:
@@ -23,24 +27,39 @@ def averageTimeCalculator(times):
 		return str(averageTimeMinutes)+":0"+str(averageTimeSeconds)
 	else:
 		return str(averageTimeMinutes)+":"+str(averageTimeSeconds)
-def linkAccepted(link):
-    if(link.__contains__("Valley")) or (link.__contains__("Open")) or (link.__contains__("2500")) or (link.__contains__("2.15")):
-        return False
-    if(link.__contains__("Boys") or link.__contains__("BOYS") or link.__contains__("boys")):
-        if(link.__contains__("II") or link.__contains__("Gold")) or link.__contains__("2"):
-            return True
-        elif(link.__contains__("Varsity") and not(link.__contains__("Junior")) and not(link.__contains__("I")) and not(link.__contains__("1")) and not(link.__contains__("MS")) and not link.__contains__("Red")):
-            return True
-        elif(link.__contains__("High School Boys") and not(link.__contains__("1"))):
-            return True
-        else:
-            return False
-    elif(link.__contains__("Division 2 Results") or link.__contains__("Varsity D2/3 Results") or link.__contains__("Blue") and not(link.__contains__("1")) and not(link.__contains__("3")) and not(link.__contains__("Boys")) and not(link.__contains__("Girls")) and not(link.__contains__("MS"))):
-        return True
-    elif(link.__contains__("Blue") and link.__contains__("Boys") and not(link.__contains__("MS"))):
-        return True
-    elif(link.__contains__("\"Completed\" Results")):
-        return True
+def checkLink(link, y, t):
+	if (link=="Varsity Boys" or link=="\"Completed\" Results" or link=="Boys D2 Varsity" or link=="D2 Varsity" or link=="Varsity Results" or link=="boys varsity" or link=="Varsity D2/3 Results"):
+		return True
+	elif (link=="Boys DI/DII" or link=="D2 Boys" or link=="Boys Results" or link=="Small School Division" or link=="HS Boys Varsity" or link=="Region 5"):
+		return True
+	elif (y<2019 and t=="Hawken"  and (link=="Varsity Boys - Valley" or link=="Boys Valley" or link=="boys valley varsity" or link=="Valley Division")):
+		return True
+	elif ((t in valleyDivision) and (link=="Varsity Boys - Valley" or link=="Boys Valley" or link=="boys valley varsity" or link=="Valley Division" or link=="Valley Varsity Boys")):
+		return True
+	elif ((t in chagrinDivision) and (link=="Varsity Boys - Chagrin" or link=="boys chagrin varsity" or link=="Boys Chagrin" or link=="boys chagrin varsity" or link=="Chagrin Division" or link=="Chagrin Varsity Boys")):
+		return True
+	else:
+		return False
+#def linkAccepted(link):
+#	if(link.__contains__("Valley")) or (link.__contains__("Open")) or (link.__contains__("2500")) or (link.__contains__("2.15")):
+#		return False
+#	if(link.__contains__("Boys") or link.__contains__("BOYS") or link.__contains__("boys")):
+#		if(link.__contains__("II") or link.__contains__("Gold")) or link.__contains__("2") or link.__contains__("DII"):
+#			return True
+#		elif((link.__contains__("Varsity") or link.__contains__("varsity")) and not(link.__contains__("Junior")) and not(link.__contains__("I")) and not(link.__contains__("1")) and not(link.__contains__("MS")) and not link.__contains__("Red")):
+#			return True
+#		elif(link.__contains__("High School Boys") and not(link.__contains__("1")) or link.__contains__("Boys Varsity")):
+#			return True
+#		else:
+# 			return False
+#	elif (link.__contains__("D2 Varsity") or link.__contains__("Varsity Results")):
+#		return True
+#	elif(link.__contains__("Division 2 Results") or link.__contains__("Varsity D2/3 Results") or link.__contains__("Blue") and not(link.__contains__("1")) and not(link.__contains__("3")) and not(link.__contains__("Boys")) and not(link.__contains__("Girls")) and not(link.__contains__("MS"))):
+#		return True
+#	elif(link.__contains__("Blue") and link.__contains__("Boys") and not(link.__contains__("MS"))):
+#		return True
+#	elif(link.__contains__("\"Completed\" Results")):
+#		return True
 def getWeatherData(location, date, time):
 	weatherData = []
 	city = location.split(",")[0]
@@ -83,6 +102,15 @@ def getMeets(team, year):
 				meetsData.append([name, meetLink])
 	return meetsData
 def getMeetResults(meetData, year, team):
+	teamName = team[1].split()
+	if (len(teamName)==1):
+		team[1] = team[1]
+	elif (teamName[0].__contains__(".")):
+		team[1] = teamName[1]
+	elif (teamName[1].__contains__(".")):
+		team[1] = teamName[1]
+	else:
+		team[1] = team[1]
 	name = (meetData[0]).lower()
 	name = name.replace(" - ", " ")
 	name = name.replace(" ", "-")
@@ -96,12 +124,13 @@ def getMeetResults(meetData, year, team):
 	for link in resultSoup.findAll("a"):
 		currentLink = link.get("href")
 		try:
-			linkText = link.contents[0]
+			linkText = link.contents[0].strip()
 		except:
 			continue
 		if(currentLink.__contains__("https://www.milesplit")):
 			continue
-		if linkAccepted(linkText):
+		if checkLink(linkText, year, team[1]):
+			print(linkText)
 			if (currentLink.__contains__("/raw")):
 				raceLink = currentLink
 			else:
@@ -109,18 +138,70 @@ def getMeetResults(meetData, year, team):
 	if raceLink is not None:
 		resultsRequest = Request(raceLink)
 		resultsPage = urlopen(resultsRequest)
+		sleep(0.5)
 		resultSoup = BeautifulSoup(resultsPage, "lxml")
+		sleep(0.5)
 		date = resultSoup.find("time").text.strip()
 		date = datetime.strptime(date, "%b %d, %Y").isoformat()[:10]
 		location = resultSoup.find("div", "venueCity").text.strip()
 		results = str(resultSoup.find("div", id="meetResultsBody"))
+	else:
+		return None
+	if (results.__contains__("Girls") or results.__contains__("girls")):
+		bSplit = results.split("5K")
+		if (len(bSplit)<2):
+			bSplit = results.split("5,000")
+		for b in range(1, len(bSplit)):
+			lines = bSplit[b].split("\n")
+			prevLines = bSplit[b-1].split("\n")
+			if ((lines[0].__contains__("Run") and prevLines[-1].__contains__("Boys")) or (lines[0].__contains__("Varsity") and prevLines[-1].__contains__("Boys"))):
+				results = bSplit[b]
+			elif ((lines[0].__contains__("run") and prevLines[-1].__contains__("boys")) or (lines[0].__contains__("varsity") and prevLines[-1].__contains__("boys"))):
+				results = bSplit[b]
+			elif ((lines[0].__contains__("Run") and prevLines[-1].__contains__("boys")) or (lines[0].__contains__("Varsity") and prevLines[-1].__contains__("boys"))):
+				results = bSplit[b]
+			elif ((lines[0].__contains__("run") and prevLines[-1].__contains__("Boys")) or (lines[0].__contains__("varsity") and prevLines[-1].__contains__("Boys"))):
+				results = bSplit[b]
+			if (team[1] in chagrinDivision):
+				if (lines[0].__contains__("Chagrin") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("chagrin") and prevLines[-1].__contains__("boys") and lines[0].__contains__("varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("Chagrin") and prevLines[-1].__contains__("boys") and lines[0].__contains__("varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("chagrin") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("chagrin") and prevLines[-1].__contains__("boys") and lines[0].__contains__("Varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("Chagrin") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("chagrin") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Varsity")):
+					results = bSplit[b]
+			elif (team[1] in valleyDivision):
+				if (lines[0].__contains__("Valeey") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("valley") and prevLines[-1].__contains__("boys") and lines[0].__contains__("varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("Valley") and prevLines[-1].__contains__("boys") and lines[0].__contains__("varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("valley") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("valley") and prevLines[-1].__contains__("boys") and lines[0].__contains__("Varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("Valley") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("varsity")):
+					results = bSplit[b]
+				elif (lines[0].__contains__("valley") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Varsity")):
+					results = bSplit[b]
 	times = []
 	lines = results.split("\n")
 	try:
 		for line in lines:
 			if (line.__contains__(team[1])):
 				for item in line.split():
-					if (item.__contains__(":") and int(item.split(":")[0])>12 and int(item.split(":")[0])<45):
+					if (len(item.split(":"))>2):
+						item = item[2:]
+					if (hasNumber(item) and item.__contains__(":") and int(item.split(":")[0])>13 and int(item.split(":")[0])<45):
+						print(item)
 						if (len(times)>=7):
 							raise ListTooLong
 						else:
@@ -139,7 +220,6 @@ def enterMeetData(meetData, c, mydb):
 		else:
 			strCommand+=", "+str(data)
 	strCommand+=")"
-	#strCommand = "INSERT INTO MeetData VALUES ('"+meetData[0]+"', '"+meetData[2]+"', "+str(meetData[5][0])+", "+str(meetData[5][1])+", "+str(meetData[5][2])+", "+str(meetData[5][3])+", "+str(meetData[5][4])+", "+str(meetData[5][5])+")"
 	c.execute(strCommand)
 	mydb.commit()
 def enterTeamData(meetData, c, mydb):
@@ -173,34 +253,47 @@ def main():
 	teamTableExists = False
 	for r in result:
 		if (r[0]=="MeetData"):
+			cursor.execute("SELECT * FROM MeetData")
+			r = cursor.fetchall()
+			if (r!=[]):
+				cursor.execute("DELETE FROM MeetData")
+				mydb.commit()
 			meetTableExists = True
 		elif (r[0]=="TeamData"):
+			cursor.execute("SELECT * FROM TeamData")
+			r = cursor.fetchall()
+			if (r!=[]):
+				cursor.execute("DELETE FROM TeamData")
+				mydb.commit()
 			teamTableExists = True
 	if (not meetTableExists):
 		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, windgust FLOAT, cloudcover FLOAT)")
 	if (not teamTableExists):
 		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME)")
-	startYear = 2012
+	startYear = 2017
 	endYear = 2022
 	results = []
 	teams = getTeams()
 	for year in range(startYear, endYear):
 		print(year)
 		for team in teams:
+			if (team[1]=="Beaumont"):
+				continue
 			print(team[1])
 			#team = [9454, "West Geauga"]
 			#year = 2021
 			meets = getMeets(team, year)
-			yearResults = []
 			for meet in meets:
+				if (meet[0].__contains__("McQuaid")):
+					continue
 				print(meet[0])
 				results = getMeetResults(meet, year, team)
-				results.append(getWeatherData(results[3], results[2], "09:00:00"))
-				#yearResults.append(results)
-				enterMeetData(results, cursor, mydb)
+				if results is None:
+					print("Something happened")
+					continue
+#				results.append(getWeatherData(results[3], results[2], "10:00:00"))
+#				enterMeetData(results, cursor, mydb)
 				enterTeamData(results, cursor, mydb)
-	#for item in yearResults:
-	#	print(item)
 	mydb.close()
 if __name__=="__main__":
 	main()

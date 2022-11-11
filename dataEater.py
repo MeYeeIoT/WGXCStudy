@@ -10,12 +10,16 @@ startYear = 2017
 endYear = 2022
 valleyDivision = ["Grand Valley", "Crestwood", "Independence", "Wickliffe", "Cardinal", "Kirtland", "Berkshire", "Trinity", "Richmond"]
 chagrinDivision = ["West Geauga", "Hawken", "Orange", "Edgewood", "Chagrin Falls", "Geneva", "Beachwood", "Perry", "Lakeside", "Harvey"]
+#Little custom exception I made to break out of a nested loop
 class ListTooLong(Exception):
 	pass
+#Checks if a string has at least one number in it
 def hasNumber(string):
 	return any(char.isdigit() for char in string)
+#Calculates the average time of a cross country race primarily given a list of strings of times
 def averageTimeCalculator(times):
 	timeList = []
+	#Splits the time into minutes and seconds and averages them seperately then puts them back together
 	for t in times:
 		timeSplit = t.split(":")
 		minutes = int(timeSplit[0])*60
@@ -29,6 +33,7 @@ def averageTimeCalculator(times):
 		return str(averageTimeMinutes)+":0"+str(averageTimeSeconds)
 	else:
 		return str(averageTimeMinutes)+":"+str(averageTimeSeconds)
+#Checks if a given link would contain the results of a boys division 2 5k cross country race, otherwise returns false
 def checkLink(link, y, t):
 	if (link=="Varsity Boys" or link=="\"Completed\" Results" or link=="Boys D2 Varsity" or link=="D2 Varsity" or link=="Varsity Results" or link=="boys varsity" or link=="Varsity D2/3 Results"):
 		return True
@@ -42,6 +47,7 @@ def checkLink(link, y, t):
 		return True
 	else:
 		return False
+#Uses a weather API to retrieve some historical weather readings based on location and time and returns the resulting list
 def getWeatherData(location, date, time):
 	weatherData = []
 	city = location.split(",")[0]
@@ -58,6 +64,7 @@ def getWeatherData(location, date, time):
 			weatherData.append(item["windgust"])
 			weatherData.append(item["cloudcover"])
 	return weatherData
+#Returns the team name and ID of the teams in the Madison 2022 District for D2 Bots
 def getTeams():
 	teams = []
 	request = Request("https://oh.milesplit.com/meets/501164-ohsaa-division-2-district-madison-2022/teams")
@@ -72,6 +79,7 @@ def getTeams():
 				cNum+=str(n)
 			teams.append([int(cNum), teamName])
 	return teams
+#Given the team and the year, returns a list fo the meets and the link to the meet info
 def getMeets(team, year):
 	meetsData = []
 	response = requests.get("https://oh.milesplit.com/api/v1/teams/"+str(team[0])+"/schedules?season=cc&year="+str(year))
@@ -83,7 +91,9 @@ def getMeets(team, year):
 				meetLink = meetData["data"][x][y]["items"][d]["link"]
 				meetsData.append([name, meetLink])
 	return meetsData
+#Gets data about the meet
 def getMeetResults(meetData, year, team):
+	#Finds the name of the team we are looking to get results for, sometimes is abbreviated so it identified the part most likely to appear in the results
 	teamName = team[1].split()
 	if (len(teamName)==1):
 		team[1] = team[1]
@@ -93,6 +103,7 @@ def getMeetResults(meetData, year, team):
 		team[1] = teamName[1]
 	else:
 		team[1] = team[1]
+	#Changes the meet name into something that would appear in the meet link
 	name = (meetData[0]).lower()
 	name = name.replace(" - ", " ")
 	name = name.replace(" ", "-")
@@ -103,6 +114,7 @@ def getMeetResults(meetData, year, team):
 	raceLink = None
 	results = None
 	date = None
+	#Loops through all the links on the page and finds the one that has the results we are looking for
 	for link in resultSoup.findAll("a"):
 		currentLink = link.get("href")
 		try:
@@ -117,6 +129,7 @@ def getMeetResults(meetData, year, team):
 				raceLink = currentLink
 			else:
 				raceLink = currentLink + "/raw"
+	#If we actually find the right link then gather the raw data from the header of the page and the body
 	if raceLink is not None:
 		resultsRequest = Request(raceLink)
 		resultsPage = urlopen(resultsRequest)
@@ -129,6 +142,7 @@ def getMeetResults(meetData, year, team):
 		results = str(resultSoup.find("div", id="meetResultsBody"))
 	else:
 		return None
+	#If the results contain both boys and girl results then figure out which block of results to use to get the d2 boys varisty
 	if (results.__contains__("Girls") or results.__contains__("girls")):
 		bSplit = results.split("5K")
 		if (len(bSplit)<2):
@@ -175,24 +189,29 @@ def getMeetResults(meetData, year, team):
 				elif (lines[0].__contains__("valley") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Varsity")):
 					results = bSplit[b]
 	times = []
+	#Go through the lines of results and pick out the ones fro the team we are looking at and that are realistic and not splits or something
 	lines = results.split("\n")
 	try:
 		for line in lines:
 			if (line.__contains__(team[1])):
 				for item in line.split():
+					#Cuts off hour part
 					if (len(item.split(":"))>2):
 						item = item[2:]
 					if (hasNumber(item) and item.__contains__(":") and int(item.split(":")[0])>13 and int(item.split(":")[0])<45):
 						print(item)
+						#Limits times gathered to 7
 						if (len(times)>=7):
 							raise ListTooLong
 						else:
 							times.append(item)
 	except ListTooLong:
 		pass
+	#If not a full 7 runners ran, then fill the rest of the datatable with NULL values
 	while (len(times)<7):
 		times.append("NULL")
 	return [meetData[0], times, date, location, team[1]]
+#Just the SQL command to put the right data about the meet into the data table
 def enterMeetData(meetData, c, mydb):
 	strCommand = "INSERT INTO MeetData VALUES ('"+meetData[0]+"', '"+meetData[2]+"'"
 	nullMark = False
@@ -204,6 +223,7 @@ def enterMeetData(meetData, c, mydb):
 	strCommand+=")"
 	c.execute(strCommand)
 	mydb.commit()
+#Same thign as above but for team data about a singular meet
 def enterTeamData(meetData, c, mydb):
 	strCommand = "INSERT INTO TeamData VALUES ('"+meetData[4]+"', '"+meetData[2]
 	nullMark = False
@@ -229,6 +249,7 @@ def enterTeamData(meetData, c, mydb):
 def main():
 	mydb = mariadb.connect(host="localhost", username="stats", password="crossCountry2048", database="statsProject")
 	cursor = mydb.cursor()
+	#Checks if the necessary tables exist, create them if they don't and clear them if they do and have data in them
 	cursor.execute("SHOW tables")
 	result = cursor.fetchall()
 	meetTableExists = False
@@ -253,6 +274,7 @@ def main():
 	if (not teamTableExists):
 		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME)")
 	results = []
+	#For all the teams, years, and meets collect data and store it into the database
 	teams = getTeams()
 	for year in range(startYear, endYear):
 		print(year)

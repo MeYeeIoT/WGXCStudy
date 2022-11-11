@@ -6,6 +6,8 @@ import os
 from time import sleep
 from datetime import datetime
 import mariadb
+startYear = 2017
+endYear = 2022
 valleyDivision = ["Grand Valley", "Crestwood", "Independence", "Wickliffe", "Cardinal", "Kirtland", "Berkshire", "Trinity", "Richmond"]
 chagrinDivision = ["West Geauga", "Hawken", "Orange", "Edgewood", "Chagrin Falls", "Geneva", "Beachwood", "Perry", "Lakeside", "Harvey"]
 class ListTooLong(Exception):
@@ -40,26 +42,6 @@ def checkLink(link, y, t):
 		return True
 	else:
 		return False
-#def linkAccepted(link):
-#	if(link.__contains__("Valley")) or (link.__contains__("Open")) or (link.__contains__("2500")) or (link.__contains__("2.15")):
-#		return False
-#	if(link.__contains__("Boys") or link.__contains__("BOYS") or link.__contains__("boys")):
-#		if(link.__contains__("II") or link.__contains__("Gold")) or link.__contains__("2") or link.__contains__("DII"):
-#			return True
-#		elif((link.__contains__("Varsity") or link.__contains__("varsity")) and not(link.__contains__("Junior")) and not(link.__contains__("I")) and not(link.__contains__("1")) and not(link.__contains__("MS")) and not link.__contains__("Red")):
-#			return True
-#		elif(link.__contains__("High School Boys") and not(link.__contains__("1")) or link.__contains__("Boys Varsity")):
-#			return True
-#		else:
-# 			return False
-#	elif (link.__contains__("D2 Varsity") or link.__contains__("Varsity Results")):
-#		return True
-#	elif(link.__contains__("Division 2 Results") or link.__contains__("Varsity D2/3 Results") or link.__contains__("Blue") and not(link.__contains__("1")) and not(link.__contains__("3")) and not(link.__contains__("Boys")) and not(link.__contains__("Girls")) and not(link.__contains__("MS"))):
-#		return True
-#	elif(link.__contains__("Blue") and link.__contains__("Boys") and not(link.__contains__("MS"))):
-#		return True
-#	elif(link.__contains__("\"Completed\" Results")):
-#		return True
 def getWeatherData(location, date, time):
 	weatherData = []
 	city = location.split(",")[0]
@@ -270,8 +252,6 @@ def main():
 		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, windgust FLOAT, cloudcover FLOAT)")
 	if (not teamTableExists):
 		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME)")
-	startYear = 2017
-	endYear = 2022
 	results = []
 	teams = getTeams()
 	for year in range(startYear, endYear):
@@ -280,8 +260,6 @@ def main():
 			if (team[1]=="Beaumont"):
 				continue
 			print(team[1])
-			#team = [9454, "West Geauga"]
-			#year = 2021
 			meets = getMeets(team, year)
 			for meet in meets:
 				if (meet[0].__contains__("McQuaid")):
@@ -289,7 +267,7 @@ def main():
 				print(meet[0])
 				results = getMeetResults(meet, year, team)
 				if results is None:
-					print("Something happened")
+					print("Link not found")
 					continue
 #				results.append(getWeatherData(results[3], results[2], "10:00:00"))
 #				enterMeetData(results, cursor, mydb)

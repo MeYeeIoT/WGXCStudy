@@ -6,7 +6,7 @@ import os
 from time import sleep
 from datetime import datetime
 import mariadb
-startYear = 2017
+startYear = 2015
 endYear = 2022
 valleyDivision = ["Grand Valley", "Crestwood", "Independence", "Wickliffe", "Cardinal", "Kirtland", "Berkshire", "Trinity", "Richmond"]
 chagrinDivision = ["West Geauga", "Hawken", "Orange", "Edgewood", "Chagrin Falls", "Geneva", "Beachwood", "Perry", "Lakeside", "Harvey"]
@@ -37,7 +37,9 @@ def averageTimeCalculator(times):
 def checkLink(link, y, t):
 	if (link=="Varsity Boys" or link=="\"Completed\" Results" or link=="Boys D2 Varsity" or link=="D2 Varsity" or link=="Varsity Results" or link=="boys varsity" or link=="Varsity D2/3 Results"):
 		return True
-	elif (link=="Boys DI/DII" or link=="D2 Boys" or link=="Boys Results" or link=="Small School Division" or link=="HS Boys Varsity" or link=="Region 5"):
+	elif (link=="Boys DI/DII" or link=="D2 Boys" or link=="Boys Results" or link=="Small School Division" or link=="HS Boys Varsity" or link=="Region 5" or link=="HS Boys"):
+		return True
+	elif (link=="D2/D3 Boys" or link=="Boys - Division II" or link=="HS Boys D2" or link=="Small School Boys" or link=="HS Boys D2-3" or link=="HS Boys Blue"):
 		return True
 	elif (y<2019 and t=="Hawken"  and (link=="Varsity Boys - Valley" or link=="Boys Valley" or link=="boys valley varsity" or link=="Valley Division")):
 		return True
@@ -259,20 +261,24 @@ def main():
 			cursor.execute("SELECT * FROM MeetData")
 			r = cursor.fetchall()
 			if (r!=[]):
-				cursor.execute("DELETE FROM MeetData")
-				mydb.commit()
+				choice = str(input("Data found in MeetData, delete?(Y/n): "))
+				if (choice=="Y"):
+					cursor.execute("DELETE FROM MeetData")
+					mydb.commit()
 			meetTableExists = True
 		elif (r[0]=="TeamData"):
 			cursor.execute("SELECT * FROM TeamData")
 			r = cursor.fetchall()
 			if (r!=[]):
-				cursor.execute("DELETE FROM TeamData")
-				mydb.commit()
+				choice = str(input("Data found in TeamData, delete?(Y/n): "))
+				if (choice=="Y"):
+					cursor.execute("DELETE FROM TeamData")
+					mydb.commit()
 			teamTableExists = True
 	if (not meetTableExists):
-		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, windgust FLOAT, cloudcover FLOAT)")
+		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, windgust FLOAT, cloudcover FLOAT, PRIMARY KEY (meetDate)")
 	if (not teamTableExists):
-		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME)")
+		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME, PRIMARY KEY (meetDate)")
 	results = []
 	#For all the teams, years, and meets collect data and store it into the database
 	teams = getTeams()
@@ -291,9 +297,12 @@ def main():
 				if results is None:
 					print("Link not found")
 					continue
-#				results.append(getWeatherData(results[3], results[2], "10:00:00"))
-#				enterMeetData(results, cursor, mydb)
-				enterTeamData(results, cursor, mydb)
+				#results.append(getWeatherData(results[3], results[2], "10:00:00"))
+				try:
+					#enterMeetData(results, cursor, mydb)
+					enterTeamData(results, cursor, mydb)
+				except mariadb.IntegrityError:
+					pass
 	mydb.close()
 if __name__=="__main__":
 	main()

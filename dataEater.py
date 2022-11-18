@@ -65,20 +65,11 @@ def checkLink(link, y, t):
 		return False
 #Uses a weather API to retrieve some historical weather readings based on location and time and returns the resulting list
 def getWeatherData(location, date, time):
-	weatherData = []
 	city = location.split(",")[0]
 	state = location.split(",")[1].strip()
-	response = requests.get("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"+city+"%2C%20"+state+"/"+date+"T"+time+"/"+date+"T"+time+"?unitGroup=metric&include=hours&key=U36K99V5F9CQN7A6LPRAT3SYP&contentType=json&elements=datetime,temp,humidity,dew,precip,windspeed,cloudcover")
+	response = requests.get("https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"+city+"%2C%20"+state+"/"+date+"T"+time+"/"+date+"T"+time+"?unitGroup=metric&include=current&key=U36K99V5F9CQN7A6LPRAT3SYP&contentType=json&elements=datetime,temp,humidity,dew,precip,windspeed,cloudcover")
 	data = response.json()
-	for item in data["days"][0]["hours"]:
-		if (item["datetime"]==time):
-			weatherData.append(item["temp"])
-			weatherData.append(item["humidity"])
-			weatherData.append(item["dew"])
-			weatherData.append(item["precip"])
-			weatherData.append(item["windspeed"])
-			weatherData.append("NULL")
-			weatherData.append(item["cloudcover"])
+	weatherData = [data["currentConditions"]["temp"], data["currentConditions"]["humidity"], data["currentConditions"]["dew"], data["currentConditions"]["precip"], data["currentConditions"]["windspeed"], data["currentConditions"]["cloudcover"]]
 	return weatherData
 #Returns the team name and ID of the teams in the Madison 2022 District for D2 Bots
 def getTeams():
@@ -339,16 +330,11 @@ def main():
 					mydb.commit()
 			teamTableExists = True
 	if (not meetTableExists):
-		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, windgust FLOAT, cloudcover FLOAT, meetId INT NOT NULL, PRIMARY KEY (meetId))")
+		cursor.execute("CREATE TABLE MeetData (meetName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, temp FLOAT, humidity FLOAT, dewPoint FLOAT, precip FLOAT, windspeed FLOAT, cloudcover FLOAT, meetId INT NOT NULL, PRIMARY KEY (meetId))")
 		mydb.commit()
 	if (not teamTableExists):
 		cursor.execute("CREATE TABLE TeamData (teamName VARCHAR(255) NOT NULL, meetDate DATE NOT NULL, runner1 TIME, runner2 TIME, runner3 TIME, runner4 TIME, runner5 TIME, runner6 TIME, runner7 TIME, meetId INT NOT NULL, PRIMARY KEY (meetId))")
 		mydb.commit()
-	ids = []
-	cursor.execute("SELECT meetId FROM MeetData")
-	meetIds = cursor.fetchall()
-	for id in meetIds[0]:
-		ids.append(id[0])
 	results = []
 	#For all the teams, years, and meets collect data and store it into the database
 	teams = getTeams()
@@ -367,25 +353,56 @@ def main():
 			print(team[1]+" "+str(counter)+"/"+str(len(teams))+"\n")
 			meets = getMeets(team, year)
 			for meet in meets:
+				meetId = meet[1].split("/")[-1]
+				weatherRecorded = False
+				timesRecorded = False
 				if (meet[0].__contains__("McQuaid") or meet[0].__contains__("Berkshire Early Bird") or meet[0].__contains__("Dick Malloy Invitational")):
 					continue
 				print(meet[0])
-				results = getMeetResults(meet, year, team)
-				if results is None:
-					print("Link not found")
+				cursor.execute("SELECT meetId FROM MeetData")
+				meetIds = cursor.fetchall()
+				for id in range(len(meetIds)):
+					meetIds[id] = meetIds[id][0]
+				if (int(meetId) in meetIds):
+					weatherRecorded = True
+				cursor.execute("SELECT teamName,meetId FROM TeamData")
+				response = cursor.fetchall()
+				for r in response:
+					if (r[0]==team[1] and r[1]==int(meetId)):
+						timesRecorded = True
+				if (weatherRecorded and timesRecorded):
+					print("Meet for this team already recorded")
 					continue
-				if (results[-1] in ids):
-					print("Meet already recorded")
-					continue
-				#if (not meet[0].__contains__("Night")):
-				#	results.append(getWeatherData(results[3], results[2], "10:00:00"))
-				#else:
-				#	results.append(getWeatherData(results[3], results[2], "21:00:00"))
-				#try:
-				#	enterTeamData(results, cursor, mydb)
-				#	enterMeetData(results, cursor, mydb)
-				#except mariadb.IntegrityError:
-				#	pass
+				elif (not weatherRecorded and timesRecorded):
+					print("Something went wrong")
+					exit(1)
+				else:
+					results = getMeetResults(meet, year, team)
+					if (results is None):
+						print("Link not found\n")
+						continue
+					elif (len(results[1])<1):
+						print("Results not found\n")
+						continue
+					results[4] = team[1]
+					if (weatherRecorded and not timesRecorded):
+						print("Weather recorded, recording times")
+						try:
+							enterTeamData(results, cursor, mydb)
+						except mariadb.IntegrityError:
+							print("Data not entered")
+							pass
+					else:
+						if (not meet[0].__contains__("Night")):
+							results.append(getWeatherData(results[3], results[2], "10:00:00"))
+						else:
+							results.append(getWeatherData(results[3], results[2], "21:00:00"))
+						try:
+							enterTeamData(results, cursor, mydb)
+							enterMeetData(results, cursor, mydb)
+						except mariadb.IntegrityError:
+							print("Data not entered")
+							pass
 				print("")
 			print("\n")
 			counter+=1

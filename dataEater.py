@@ -432,8 +432,8 @@ def main():
 		with open("DansResearch.txt", "a") as f:
 			for item in DansResearch:
 				for i in item:
-					f.write(str(i)+"\t\t")
-				f.write("\n")
+					f.write(str(i)+"\n")
+				f.write("\n\n")
 		mydb.close()
 if __name__=="__main__":
 	main()

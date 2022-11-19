@@ -7,7 +7,7 @@ from time import sleep
 from datetime import datetime
 import mariadb
 startYear = 2019
-endYear = 2022
+endYear = 2023
 valleyDivision = ["Grand Valley", "Crestwood", "Independence", "Wickliffe", "Cardinal", "Kirtland", "Berkshire", "Trinity", "Richmond"]
 chagrinDivision = ["West Geauga", "Hawken", "Orange", "Edgewood", "Chagrin Falls", "Geneva", "Beachwood", "Perry", "Lakeside", "Harvey"]
 #Little custom exception I made to break out of a nested loop
@@ -49,6 +49,16 @@ def checkLink(link, y, t):
 		return True
 	elif (link=="Boys Gold Varsity" or link=="HS Boys Blue Results" or link=="HS Individual Results" or link=="HS Mens Results" or link=="High School Boys" or link=="Varsity HS Results"):
 		return True
+	elif (link=="Boys Division 2" or link=="HS Division 2/3 Varsity Boys" or link=="Boys Division 2 Results" or link=="Boys Division 2/3 Varsity" or link=="HS Boys Varsity Division 2"):
+		return True
+	elif (link=="HS Boys D2 Varsity" or link=="HS Boys Division 2" or link=="HS Boys Varsity Division" or link=="HS Boys Small Schools" or link=="HS Boys Varsity Blue Division"):
+		return True
+	elif (link=="HS Boys Division 2/3" or link=="HS Boys Division II/III" or link=="HS Boys D2/3 Varsity" or link=="HS Boys Gold Division" or link=="Boys Division II/III"):
+		return True
+	elif (link=="HS Boys Varsity Division 2/3" or link=="Boys Varsity Division" or link=="HS Boys White Division" or link=="HS Boys 5k" or link=="Boys Div II/III Varsity"):
+		return True
+	elif (link=="HS Boys Varsity D2/3" or link=="Boys Varsity Division 2-3" or link=="HS Boys 5km" or link=="Boys Varsity 5000 Meter Run" or link=="Varsity Boys 5000"):
+		return True
 	elif (y==2019 and (t=="Gilmour" or t=="Berkshire") and (link=="Division 3" or link=="Division 3 Results" or link=="D3 Results" or link=="Division 3 HS Results")):
 		return True
 	elif ((t=="Garfield" and link=="HS Boys - County") or (t!="Garfield" and link=="HS Boys - Metro")):
@@ -57,9 +67,9 @@ def checkLink(link, y, t):
 		return True
 	elif (y<2019 and t=="Hawken"  and (link=="Varsity Boys - Valley" or link=="Boys Valley" or link=="boys valley varsity" or link=="Valley Division")):
 		return True
-	elif ((t in valleyDivision) and (link=="Varsity Boys - Valley" or link=="Boys Valley" or link=="boys valley varsity" or link=="Valley Division" or link=="Valley Varsity Boys")):
+	elif ((t in valleyDivision) and (link=="Varsity Boys - Valley" or link=="Boys Valley" or link=="boys valley varsity" or link=="Valley Division" or link=="Valley Varsity Boys" or link=="HS Boys Varsity Valley")):
 		return True
-	elif ((t in chagrinDivision) and (link=="Varsity Boys - Chagrin" or link=="boys chagrin varsity" or link=="Boys Chagrin" or link=="boys chagrin varsity" or link=="Chagrin Division" or link=="Chagrin Varsity Boys")):
+	elif ((t in chagrinDivision) and (link=="Varsity Boys - Chagrin" or link=="boys chagrin varsity" or link=="Boys Chagrin" or link=="boys chagrin varsity" or link=="Chagrin Division" or link=="Chagrin Varsity Boys" or link=="HS Boys Varsity Chagrin")):
 		return True
 	else:
 		return False
@@ -101,24 +111,24 @@ def getMeets(team, year):
 #Gets data about the meet
 def getMeetResults(meetData, year, team):
 	#Finds the name of the team we are looking to get results for, sometimes is abbreviated so it identified the part most likely to appear in the results
-	teamName = team[1].split()
+	teamName = team.split()
 	if (len(teamName)==1):
-		team[1] = team[1]
+		team = team
 	elif (teamName[0].__contains__(".")):
-		team[1] = teamName[1]
+		team = teamName[1]
 	elif (teamName[1].__contains__(".")):
-		if (team[1] == "Lake Cath."):
-			team[1] = "Lake Cath"
+		if (team == "Lake Cath."):
+			team = "Lake Cath"
 		else:
-			team[1] = teamName[0]
+			team = teamName[0]
 	else:
-		if (team[1] == "Chardon NDCL"):
-			team[1] = "NDCL"
-		elif (team[1] == "Gilmour Academy"):
-			team[1] = "Gilmour"
-		elif (team[1] == "Jefferson Area"):
-			team[1] = "Jefferson"
-		team[1] = team[1]
+		if (team == "Chardon NDCL"):
+			team = "NDCL"
+		elif (team == "Gilmour Academy"):
+			team = "Gilmour"
+		elif (team == "Jefferson Area"):
+			team = "Jefferson"
+		team = team
 	#Get meet ID from the link
 	meetId = meetData[1].split("/")[-1]
 	#Changes the meet name into something that would appear in the meet link
@@ -128,26 +138,29 @@ def getMeetResults(meetData, year, team):
 	name = name.replace("/", "")
 	meetLink = meetData[1]+"-"+name+"-"+str(year)+"/results"
 	resultsRequest = Request(meetLink)
-	resultPage = urlopen(resultsRequest)
-	resultSoup = BeautifulSoup(resultPage, "lxml")
-	raceLink = None
-	results = None
-	date = None
-	#Loops through all the links on the page and finds the one that has the results we are looking for
-	for link in resultSoup.findAll("a"):
-		currentLink = link.get("href")
-		try:
-			linkText = link.contents[0].strip()
-		except:
-			continue
-		if(currentLink.__contains__("https://www.milesplit")):
-			continue
-		if checkLink(linkText, year, team[1]):
-			print(linkText)
-			if (currentLink.__contains__("/raw")):
-				raceLink = currentLink
-			else:
-				raceLink = currentLink + "/raw"
+	try:
+		resultPage = urlopen(resultsRequest)
+		resultSoup = BeautifulSoup(resultPage, "lxml")
+		raceLink = None
+		results = None
+		date = None
+		#Loops through all the links on the page and finds the one that has the results we are looking for
+		for link in resultSoup.findAll("a"):
+			currentLink = link.get("href")
+			try:
+				linkText = link.contents[0].strip()
+			except:
+				continue
+			if(currentLink.__contains__("https://www.milesplit")):
+				continue
+			if checkLink(linkText, year, team):
+				print(linkText)
+				if (currentLink.__contains__("/raw")):
+					raceLink = currentLink
+				else:
+					raceLink = currentLink + "/raw"
+	except UnicodeEncodeError:
+		raceLink = None
 	#If we actually find the right link then gather the raw data from the header of the page and the body
 	if raceLink is not None:
 		resultsRequest = Request(raceLink)
@@ -158,6 +171,8 @@ def getMeetResults(meetData, year, team):
 		date = resultSoup.find("time").text.strip()
 		date = datetime.strptime(date, "%b %d, %Y").isoformat()[:10]
 		location = resultSoup.find("div", "venueCity").text.strip()
+		if (name.__contains__("kent")):
+			location = "Kent, OH"
 		results = str(resultSoup.find("div", id="meetResultsBody"))
 	else:
 		return None
@@ -174,7 +189,7 @@ def getMeetResults(meetData, year, team):
 			lines = bSplit[b].split("\n")
 			prevLines = bSplit[b-1].split("\n")
 			if (meetData[0].__contains__("Chagrin Valley Conference")):
-				if (team[1] in chagrinDivision):
+				if (team in chagrinDivision):
 					if (lines[0].__contains__("Chagrin") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Varsity")):
 						results = bSplit[b]
 						break
@@ -196,7 +211,7 @@ def getMeetResults(meetData, year, team):
 					elif (lines[0].__contains__("chagrin") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Varsity")):
 						results = bSplit[b]
 						break
-				elif (team[1] in valleyDivision):
+				elif (team in valleyDivision):
 					if (lines[0].__contains__("Valley") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Varsity")):
 						results = bSplit[b]
 						break
@@ -219,10 +234,10 @@ def getMeetResults(meetData, year, team):
 						results = bSplit[b]
 						break
 			else:
-				if (team[1]!="Geneva" and lines[0].__contains__("Run") and prevLines[-1].__contains__("Boys") and not lines[0].__contains__("Gray") and not lines[0].__contains__("Open") and not lines[0].__contains__("D1")):
+				if (team!="Geneva" and lines[0].__contains__("Run") and prevLines[-1].__contains__("Boys") and not lines[0].__contains__("Gray") and not lines[0].__contains__("Open") and not lines[0].__contains__("D1")):
 					results = bSplit[b]
 					break
-				elif (team[1]=="Geneva" and lines[0].__contains__("Run") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Gray")):
+				elif (team=="Geneva" and lines[0].__contains__("Run") and prevLines[-1].__contains__("Boys") and lines[0].__contains__("Gray")):
 					results = bSplit[b]
 					break
 				elif ((lines[0].__contains__("Division 2") and prevLines[-1].__contains__("Boys")) or (prevLines[-1].__contains__("High School Boys") and not prevLines[-1].__contains__("Team Results"))):
@@ -240,19 +255,24 @@ def getMeetResults(meetData, year, team):
 				elif ((lines[0].__contains__("run") and prevLines[-1].__contains__("Boys")) or (lines[0].__contains__("varsity") and prevLines[-1].__contains__("Boys"))):
 					results = bSplit[b]
 					break
+				elif (prevLines[-1].__contains__("Boys") and not lines[0].__contains__("Open") and not lines[0].__contains__("Junior")):
+					results = bSplit[b]
+					break
 		#print(results)
 	times = []
 	#Go through the lines of results and pick out the ones fro the team we are looking at and that are realistic and not splits or something
 	lines = results.split("\n")
 	try:
 		for line in lines:
-			if (line.lower().__contains__(team[1].lower()) and not line.lower().__contains__("total")):
+			if (line.lower().__contains__(team.lower()) and not line.lower().__contains__("total")):
 				for item in line.split():
 					#Cuts off hour part
 					if (len(item.split(":"))>2):
 						item = item[2:]
 					try:
 						if (hasNumber(item) and item.__contains__(":") and int(item.split(":")[0])>13 and int(item.split(":")[0])<30):
+							if (item.find("<")!=-1):
+								item = item[:(item.find("<"))]
 							#Limits times gathered to 7
 							if (len(times)>=7):
 								raise ListTooLong
@@ -266,7 +286,7 @@ def getMeetResults(meetData, year, team):
 	#If not a full 7 runners ran, then fill the rest of the datatable with NULL values
 	while (len(times)<7):
 		times.append("NULL")
-	return [meetData[0], times, date, location, team[1], meetId]
+	return [meetData[0], times, date, location, team, meetId]
 #Just the SQL command to put the right data about the meet into the data table
 def enterMeetData(meetData, c, mydb):
 	strCommand = "INSERT INTO MeetData VALUES ('"+meetData[0]+"', '"+meetData[2]+"'"
@@ -303,6 +323,8 @@ def enterTeamData(meetData, c, mydb):
 	c.execute(strCommand)
 	mydb.commit()
 def main():
+	DansResearch = []
+	offset = int(input("Enter number of years to offset from "+str(startYear)+": "))
 	mydb = mariadb.connect(host="localhost", username="stats", password="crossCountry2048", database="statsProject")
 	cursor = mydb.cursor()
 	#Checks if the necessary tables exist, create them if they don't and clear them if they do and have data in them
@@ -338,75 +360,80 @@ def main():
 	results = []
 	#For all the teams, years, and meets collect data and store it into the database
 	teams = getTeams()
-	for year in range(startYear, endYear):
-		print(str(year)+"\n")
-		counter = 1
-		for team in teams:
-			if (team[1]=="Beaumont" or team[1]=="Kenston" or team[1]=="Collinwood"): #or team[1]=="Ash. Edgewood" or team[1]=="Chagrin Falls" or team[1]=="Berkshire" or team[1]=="Chardon NDCL" or team[1]=="Cle. VASJ"):
-				continue
-			#elif (team[1]=="Conneaut" or team[1]=="Crestwood" or team[1]=="Gar. Garfield" or team[1]=="Geneva" or team[1]=="Gilmour Academy" or team[1]=="Hawken" or team[1]=="Kenston"):
-			#	continue
-			#elif (team[1]=="Jefferson Area" or team[1]=="Lake Cath." or team[1]=="Lakeview" or team[1]=="Niles McKinley" or team[1]=="Orange" or team[1]=="Perry" or team[1]=="Ursuline"):
-			#	continue
-			#elif(team[1]=="War. Champion"):
-				continue
-			print(team[1]+" "+str(counter)+"/"+str(len(teams))+"\n")
-			meets = getMeets(team, year)
-			for meet in meets:
-				meetId = meet[1].split("/")[-1]
-				weatherRecorded = False
-				timesRecorded = False
-				if (meet[0].__contains__("McQuaid") or meet[0].__contains__("Berkshire Early Bird") or meet[0].__contains__("Dick Malloy Invitational")):
+	try:
+		for year in range(startYear+offset, endYear):
+			print(str(year)+"\n")
+			counter = 1
+			for team in teams:
+				if (team[1]=="Beaumont" or team[1]=="Kenston" or team[1]=="Collinwood"):
 					continue
-				print(meet[0])
-				cursor.execute("SELECT meetId FROM MeetData")
-				meetIds = cursor.fetchall()
-				for id in range(len(meetIds)):
-					meetIds[id] = meetIds[id][0]
-				if (int(meetId) in meetIds):
-					weatherRecorded = True
-				cursor.execute("SELECT teamName,meetId FROM TeamData")
-				response = cursor.fetchall()
-				for r in response:
-					if (r[0]==team[1] and r[1]==int(meetId)):
-						timesRecorded = True
-				if (weatherRecorded and timesRecorded):
-					print("Meet for this team already recorded")
-					continue
-				elif (not weatherRecorded and timesRecorded):
-					print("Something went wrong")
-					exit(1)
-				else:
-					results = getMeetResults(meet, year, team)
-					if (results is None):
-						print("Link not found\n")
+				print(team[1]+" "+str(counter)+"/"+str(len(teams))+"\n")
+				meets = getMeets(team, year)
+				for meet in meets:
+					meetId = meet[1].split("/")[-1]
+					weatherRecorded = False
+					timesRecorded = False
+					if (meet[0].__contains__("McQuaid") or meet[0].__contains__("Berkshire Early Bird") or meet[0].__contains__("Dick Malloy Invitational") or meet[0].__contains__("Wapokaneta") or meet[0].__contains__("The Glow Stick Glide")):
 						continue
-					elif (len(results[1])<1):
-						print("Results not found\n")
+					print(meet[0])
+					cursor.execute("SELECT meetId FROM MeetData")
+					meetIds = cursor.fetchall()
+					for id in range(len(meetIds)):
+						meetIds[id] = meetIds[id][0]
+					if (int(meetId) in meetIds):
+						weatherRecorded = True
+					cursor.execute("SELECT teamName,meetId FROM TeamData")
+					response = cursor.fetchall()
+					for r in response:
+						if (r[0]==team[1] and r[1]==int(meetId)):
+							timesRecorded = True
+					if (weatherRecorded and timesRecorded):
+						print("Meet for this team already recorded\n")
 						continue
-					results[4] = team[1]
-					if (weatherRecorded and not timesRecorded):
-						print("Weather recorded, recording times")
-						try:
-							enterTeamData(results, cursor, mydb)
-						except mariadb.IntegrityError:
-							print("Data not entered")
-							pass
+					elif (not weatherRecorded and timesRecorded):
+						print("Something went wrong")
+						exit(1)
 					else:
-						if (not meet[0].__contains__("Night")):
-							results.append(getWeatherData(results[3], results[2], "10:00:00"))
+						results = getMeetResults(meet, year, team[1])
+						if (results is None):
+							print("Link not found\n")
+							DansResearch.append([meet[0], team[1], year, meet[1]])
+							continue
+						elif (results[1][0]=="NULL"):
+							print("Results not found\n")
+							DansResearch.append([meet[0], team[1], year, meet[1]])
+							continue
+						results[4] = team[1]
+						if (weatherRecorded and not timesRecorded):
+							print("Weather recorded, recording times")
+							try:
+								enterTeamData(results, cursor, mydb)
+							except mariadb.IntegrityError:
+								print("Data not entered")
+								pass
 						else:
-							results.append(getWeatherData(results[3], results[2], "21:00:00"))
-						try:
-							enterTeamData(results, cursor, mydb)
-							enterMeetData(results, cursor, mydb)
-						except mariadb.IntegrityError:
-							print("Data not entered")
-							pass
-				print("")
-			print("\n")
-			counter+=1
-		print("\n\n")
-	mydb.close()
+							if (not meet[0].__contains__("Night")):
+								results.append(getWeatherData(results[3], results[2], "10:00:00"))
+							else:
+								results.append(getWeatherData(results[3], results[2], "21:00:00"))
+							try:
+								enterTeamData(results, cursor, mydb)
+								enterMeetData(results, cursor, mydb)
+							except mariadb.IntegrityError:
+								print("Data not entered")
+								pass
+					print("")
+				print("\n")
+				counter+=1
+			print("\n\n")
+	except KeyboardInterrupt:
+		print("Stopping")
+	finally:
+		with open("DansResearch.txt", "a") as f:
+			for item in DansResearch:
+				for i in item:
+					f.write(str(i)+"\t\t")
+				f.write("\n")
+		mydb.close()
 if __name__=="__main__":
 	main()

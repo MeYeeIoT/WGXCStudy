@@ -10,6 +10,8 @@ def getData():
 	mydb = mariadb.connect(host="localhost", username="stats", password="crossCountry2048", database="statsProject")
 	c = mydb.cursor()
 	#c.execute("SELECT * FROM TeamData FULL OUTER JOIN MeetData WHERE TeamData.meetDate=MeetData.meetDate")
+	#Command to run
+	#SELECT TeamData.teamName,TeamData.runner1,TeamData.runner2,TeamData.runner3,TeamData.runner4,TeamData.runner5,TeamData.runner6,TeamData.runner7,MeetData.meetDate,MeetData.temp,MeetData.humidity,MeetData.dewPoint,MeetData.precip,MeetData.windspeed,MeetData.cloudcover FROM TeamData LEFT JOIN MeetData ON TeamData.meetId=MeetData.meetId;
 	c.execute("SELECT * FROM TeamData")
 	placeholder = c.fetchall()
 	#placeholder = placeholder[1]
